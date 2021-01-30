@@ -5,6 +5,7 @@ services:
     image: 365522784498.dkr.ecr.eu-west-3.amazonaws.com/oz-webapp:latest
     networks:
       - traefik-public
+      - metrics-internal
     environment:
       - WEB_DOMAIN=web.andyrum.com
     deploy:
@@ -33,4 +34,6 @@ services:
 
 networks:
   traefik-public:
+    external: true
+  metrics-internal:
     external: true
