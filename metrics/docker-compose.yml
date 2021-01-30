@@ -1,0 +1,70 @@
+version: "3.7"
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    networks:
+      - traefik-public
+    environment: 
+      - PROMETHEUS_DOMAIN=prometheus.andyrum.com
+    volumes:
+      - prometheus-data:/prometheus
+      - ./data/prometheus/config:/etc/prometheus/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.constraint-label=traefik-public
+        - traefik.http.routers.prometheus-http.rule=Host(`${PROMETHEUS_DOMAIN?Variable not set}`)
+        - traefik.http.routers.prometheus-http.entrypoints=http
+        - traefik.http.routers.prometheus-http.middlewares=https-redirect
+        - traefik.http.routers.prometheus-https.rule=Host(`${PROMETHEUS_DOMAIN?Variable not set}`)
+        - traefik.http.routers.prometheus-https.entrypoints=https
+        - traefik.http.routers.prometheus-https.tls=true
+        - traefik.http.routers.prometheus-https.tls.certresolver=le
+        - traefik.http.services.prometheus.loadbalancer.server.port=9090
+
+  grafana:
+    image: grafana/grafana
+    networks:
+      - traefik-public
+    environment: 
+      - GRAFANA_DOMAIN=grafana.andyrum.com
+      - GF_SECURITY_ADMIN_PASSWORD=password
+    volumes:
+      - grafana-data/:/var/lib/grafana
+    links:
+      - prometheus:prometheus
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.constraint-label=traefik-public
+        - traefik.http.routers.grafana-http.rule=Host(`${GRAFANA_DOMAIN?Variable not set}`)
+        - traefik.http.routers.grafana-http.entrypoints=http
+        - traefik.http.routers.grafana-http.middlewares=https-redirect
+        - traefik.http.routers.grafana-https.rule=Host(`${GRAFANA_DOMAIN?Variable not set}`)
+        - traefik.http.routers.grafana-https.entrypoints=https
+        - traefik.http.routers.grafana-https.tls=true
+        - traefik.http.routers.grafana-https.tls.certresolver=le
+        - traefik.http.services.grafana.loadbalancer.server.port=3000
+
+volumes:
+  prometheus-data:
+  prometheus-config:
+  grafana-data:
+
+networks:
+  traefik-public:
+    external: true
