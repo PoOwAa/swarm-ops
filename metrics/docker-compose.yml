@@ -40,7 +40,7 @@ services:
       - GRAFANA_DOMAIN=grafana.andyrum.com
       - GF_SECURITY_ADMIN_PASSWORD=password
     volumes:
-      - grafana-data/:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
     links:
       - prometheus:prometheus
     deploy:
