@@ -5,6 +5,7 @@ services:
     image: prom/prometheus:latest
     networks:
       - traefik-public
+      - metrics-internal
     environment: 
       - PROMETHEUS_DOMAIN=prometheus.andyrum.com
     volumes:
@@ -36,6 +37,7 @@ services:
     image: grafana/grafana
     networks:
       - traefik-public
+      - metrics-internal
     environment: 
       - GRAFANA_DOMAIN=grafana.andyrum.com
       - GF_SECURITY_ADMIN_PASSWORD=password
@@ -66,3 +68,6 @@ volumes:
 networks:
   traefik-public:
     external: true
+  metrics-internal:
+    driver: overlay
+    attachable: true
