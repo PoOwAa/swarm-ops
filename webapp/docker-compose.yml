@@ -5,14 +5,13 @@ services:
     image: 365522784498.dkr.ecr.eu-west-3.amazonaws.com/oz-webapp:latest
     networks:
       - traefik-public
-      - metrics-internal
     environment:
       - WEB_DOMAIN=web.andyrum.com
     deploy:
       resources:
         limits:
-          cpus: "0.50"
-          memory: "256M"
+          cpus: "0.10"
+          memory: "128M"
         # reservations:
         #   cpus: "0.1"
         #   memory: 128M
@@ -34,6 +33,4 @@ services:
 
 networks:
   traefik-public:
-    external: true
-  metrics-internal:
     external: true
