@@ -81,7 +81,7 @@ services:
       # Enable the Dashboard and API
       - --api
       # Enable prometheus
-      - -- metrics.prometheus=true
+      - --metrics.prometheus=true
       # Service labels
       - --metrics.prometheus.addServicesLabels=true
       # Entry point labels
