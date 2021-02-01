@@ -1,5 +1,11 @@
 version: "3.7"
 
+configs:
+  prometheus_config:
+    file: ./config/prometheus/prometheus.yml
+  dockerd_config:
+    file: ./config/dockerd/Caddyfile
+
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -10,7 +16,9 @@ services:
       - PROMETHEUS_DOMAIN=prometheus.andyrum.com
     volumes:
       - prometheus-data:/prometheus
-      - ./data/prometheus/config:/etc/prometheus/
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -60,11 +68,141 @@ services:
         - traefik.http.routers.grafana-https.tls=true
         - traefik.http.routers.grafana-https.tls.certresolver=le
         - traefik.http.services.grafana.loadbalancer.server.port=3000
+  
+  node-exporter:
+    image: stefanprodan/swarmprom-node-exporter:v0.16.0
+    networks:
+      - metrics-internal
+    environment:
+      - NODE_ID=${NODE_ID}
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /etc/hostname:/etc/nodename
+    command:
+      - '--path.sysfs=/host/sys'
+      - '--path.procfs=/host/proc'
+      - '--collector.textfile.directory=/etc/node-exporter/'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--no-collector.ipvs'
+    deploy:
+      mode: global
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  dockerd-exporter:
+    image: stefanprodan/caddy
+    networks:
+      - metrics-internal
+    environment:
+      - DOCKER_GWBRIDGE_IP=172.18.0.1
+    configs:
+      - source: dockerd_config
+        target: /etc/caddy/Caddyfile
+    deploy:
+      mode: global
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  cadvisor:
+    image: google/cadvisor
+    networks:
+      - metrics-internal
+    command: -logtostderr -docker_only
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    deploy:
+      mode: global
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  alertmanager:
+    image: stefanprodan/swarmprom-alertmanager:v0.14.0
+    networks:
+      - default
+      - metrics-internal
+      - traefik-public
+    environment:
+      - SLACK_URL=${ALERTMANAGER_SLACK_URL:-https://hooks.slack.com/services/TOKEN}
+      - SLACK_CHANNEL=${ALERTMANAGER_SLACK_CHANNEL:-general}
+      - SLACK_USER=${ALERTMANAGER_SLACK_USER:-alertmanager}
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - alertmanager:/alertmanager
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.constraint-label=traefik-public
+        - traefik.http.routers.swarmprom-alertmanager-http.rule=Host(`${ALERTMANAGER_DOMAIN?Variable not set}`)
+        - traefik.http.routers.swarmprom-alertmanager-http.entrypoints=http
+        - traefik.http.routers.swarmprom-alertmanager-http.middlewares=https-redirect
+        - traefik.http.routers.swarmprom-alertmanager-https.rule=Host(`${ALERTMANAGER_DOMAIN?Variable not set}`)
+        - traefik.http.routers.swarmprom-alertmanager-https.entrypoints=https
+        - traefik.http.routers.swarmprom-alertmanager-https.tls=true
+        - traefik.http.routers.swarmprom-alertmanager-https.tls.certresolver=le
+        - traefik.http.services.swarmprom-alertmanager.loadbalancer.server.port=9093
+        - traefik.http.middlewares.swarmprom-alertmanager-auth.basicauth.users=${ALERTMANAGER_ADMIN_USER?Variable not set}:${ALERTMANAGER_ADMIN_PASSWORD?Variable not set}
+        - traefik.http.routers.swarmprom-alertmanager-https.middlewares=swarmprom-alertmanager-auth
+
+  unsee:
+    image: cloudflare/unsee:v0.8.0
+    networks:
+      - default
+      - metrics-internal
+      - traefik-public
+    environment:
+      - "ALERTMANAGER_URIS=default:https://alertmanager:9093"
+      - UNSEE_DOMAIN=unsee.andyrum.com
+      - UNSEE_ADMIN_USER=admin
+    deploy:
+      mode: replicated
+      replicas: 1
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=traefik-public
+        - traefik.constraint-label=traefik-public
+        - traefik.http.routers.swarmprom-unsee-http.rule=Host(`unsee.${UNSEE_DOMAIN?Variable not set}`)
+        - traefik.http.routers.swarmprom-unsee-http.entrypoints=http
+        - traefik.http.routers.swarmprom-unsee-http.middlewares=https-redirect
+        - traefik.http.routers.swarmprom-unsee-https.rule=Host(`unsee.${UNSEE_DOMAIN?Variable not set}`)
+        - traefik.http.routers.swarmprom-unsee-https.entrypoints=https
+        - traefik.http.routers.swarmprom-unsee-https.tls=true
+        - traefik.http.routers.swarmprom-unsee-https.tls.certresolver=le
+        - traefik.http.services.swarmprom-unsee.loadbalancer.server.port=8080
+        - traefik.http.middlewares.swarmprom-unsee-auth.basicauth.users=${UNSEE_ADMIN_USER?Variable not set}:${UNSEE_ADMIN_PASSWORD?Variable not set}
+        - traefik.http.routers.swarmprom-unsee-https.middlewares=swarmprom-unsee-auth
 
 volumes:
   prometheus-data:
-  prometheus-config:
   grafana-data:
+  alertmanager:
 
 networks:
   traefik-public:
