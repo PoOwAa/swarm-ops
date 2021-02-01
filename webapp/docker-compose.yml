@@ -6,7 +6,7 @@ services:
     networks:
       - traefik-public
     environment:
-      - WEB_DOMAIN=web2.andyrum.com
+      - WEB2_DOMAIN=web2.andyrum.com
     deploy:
       resources:
         limits:
@@ -22,10 +22,10 @@ services:
         - traefik.enable=true
         - traefik.docker.network=traefik-public
         - traefik.constraint-label=traefik-public
-        - traefik.http.routers.web2-http.rule=Host(`${WEB_DOMAIN?Variable not set}`)
+        - traefik.http.routers.web2-http.rule=Host(`${WEB2_DOMAIN?Variable not set}`)
         - traefik.http.routers.web2-http.entrypoints=http
         - traefik.http.routers.web2-http.middlewares=https-redirect
-        - traefik.http.routers.web2-https.rule=Host(`${WEB_DOMAIN?Variable not set}`)
+        - traefik.http.routers.web2-https.rule=Host(`${WEB2_DOMAIN?Variable not set}`)
         - traefik.http.routers.web2-https.entrypoints=https
         - traefik.http.routers.web2-https.tls=true
         - traefik.http.routers.web2-https.tls.certresolver=le
