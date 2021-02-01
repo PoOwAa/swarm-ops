@@ -70,7 +70,7 @@ services:
         - traefik.http.services.grafana.loadbalancer.server.port=3000
   
   node-exporter:
-    image: stefanprodan/swarmprom-node-exporter:v0.16.0
+    image: quay.io/prometheus/node-exporter:latest
     networks:
       - metrics-internal
     environment:
@@ -85,6 +85,8 @@ services:
       - '--path.procfs=/host/proc'
       - '--collector.textfile.directory=/etc/node-exporter/'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.systemd'
+      - '--collector.processes'
       - '--no-collector.ipvs'
     deploy:
       mode: global
