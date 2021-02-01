@@ -82,10 +82,6 @@ services:
       - --api
       # Enable prometheus
       - --metrics.prometheus=true
-      # Service labels
-      - --metrics.prometheus.addServicesLabels=true
-      # Entry point labels
-      - --metrics.prometheus.addEntryPointsLabels=true
     networks:
       # Use the public network created to be shared between Traefik and
       # any other service that needs to be publicly available with HTTPS
