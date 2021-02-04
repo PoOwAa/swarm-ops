@@ -86,6 +86,8 @@ services:
       - --api
       # Enable prometheus
       - --metrics.prometheus=true
+      # Retry attempts 2
+      - --retry.attempts=2
     networks:
       # Use the public network created to be shared between Traefik and
       # any other service that needs to be publicly available with HTTPS
