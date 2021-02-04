@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   webapp2:
-    image: 365522784498.dkr.ecr.eu-west-3.amazonaws.com/oz-app2:latest
+    image: 365522784498.dkr.ecr.eu-west-3.amazonaws.com/oz-app2:1.0.1
     networks:
       - traefik-public
     environment:
@@ -32,7 +32,7 @@ services:
         - traefik.http.services.web2.loadbalancer.server.port=3000
 
   web:
-    image: 365522784498.dkr.ecr.eu-west-3.amazonaws.com/oz-webapp:latest
+    image: 365522784498.dkr.ecr.eu-west-3.amazonaws.com/oz-webapp:1.0.2
     networks:
       - traefik-public
     environment:
